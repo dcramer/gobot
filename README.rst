@@ -3,6 +3,6 @@ gobot
 
 ::
 
-    go get github.com/disqus/gobot
-    cd $GOPATH/src/github.com/disqus/gobot
+    go get github.com/dcramer/gobot
+    cd $GOPATH/src/github.com/dcramer/gobot
     go run gobot.go
