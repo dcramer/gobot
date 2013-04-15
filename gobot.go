@@ -10,8 +10,6 @@ import (
     "regexp"
 )
 
-const IRC_NICK = "gobot"
-const IRC_SERVER = "irc.freenode.net"
 
 func main() {
     config := jconfig.LoadConfig("gobot.json")
