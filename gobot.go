@@ -1,40 +1,54 @@
 package main
 
 import (
-    "bytes"
+    "crypto/tls"
     "fmt"
-    "github.com/lye/cleanirc"
+    "github.com/thoj/go-ircevent"
+    "github.com/stathat/jconfig"
     "log"
     "os"
-    "os/exec"
     "regexp"
-    "strings"
 )
 
 const IRC_NICK = "gobot"
 const IRC_SERVER = "irc.freenode.net"
 
 func main() {
+    config := jconfig.LoadConfig("gobot.json")
+
+    ircserver := config.GetString("server")
+    ircnick := config.GetString("nick")
+
     // TODO: we should recompile this anytime the bot's nickname changes
-    msgparser, error := regexp.Compile(fmt.Sprintf("^%s[:,] (?P<message>.+)$", IRC_NICK))
+    msgparser, error := regexp.Compile(fmt.Sprintf("^%s[:,] (?P<message>.+)$", ircnick))
     if error != nil {
         log.Fatal(error)
     }
 
-    irccon := irc.IRC(IRC_NICK, IRC_NICK)
+    irccon := irc.IRC(ircnick, ircnick)
+    ircpass := config.GetString("password")
+    if ircpass != "" {
+        irccon.Password = ircpass
+    }
+
     irccon.VerboseCallbackHandler = false
-    
-    error = irccon.Connect(IRC_SERVER)
+    irccon.UseTLS = config.GetBool("ssl")
+    irccon.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+
+    error = irccon.Connect(ircserver)
     if error != nil {
         fmt.Printf("%s\n", error)
         fmt.Printf("%#v\n", irccon)
         os.Exit(1)
     }
-    irccon.AddCallback("001", func(e *irc.IRCEvent) {
-        // irccon.Join("#disqus")
-        // irccon.Join("#ops")
+    irccon.AddCallback("001", func(e *irc.Event) {
+        for _, channel := range config.GetArray("channels") {
+            irccon.Join(fmt.Sprintf("%s", channel))
+        }
     })
-    irccon.AddCallback("PRIVMSG", func(e *irc.IRCEvent) { 
+    irccon.AddCallback("PRIVMSG", func(e *irc.Event) { 
+        log.Println(e.Message)
+
         match := msgparser.FindSubmatch([]byte(e.Message))
         if match == nil {
             return
@@ -70,7 +84,7 @@ func main() {
 //     return latestRevision
 // }
 
-func handleMessage(message string, event *irc.IRCEvent, respond func(output string)) {
+func handleMessage(message string, event *irc.Event, respond func(output string)) {
     switch message {
         // case "what's deployed?":
         //     latestRevision := getWhatsDeployed()
